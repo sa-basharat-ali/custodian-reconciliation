@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reconciled, Account by Account</title>
+<meta name="description" content="A data analyst's read of custodian reconciliation, fee billing and advisor capacity at an AI wealth firm, with a working model. By Syed Ahmed Basharat Ali.">
+<meta property="og:title" content="Reconciled, Account by Account">
+<meta property="og:description" content="Total AUM matched the custodian on 62 of 63 days. On 61 of them, accounts underneath were wrong.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F4F5F7; --paper:#FFFFFF; --ink:#13233F; --muted:#5B6578; --line:#D9DDE5; --rule:#13233F;
+  --ok:#0F7A55; --ok-soft:#E3F3EC; --brk:#B42318; --brk-soft:#FCE9E7; --tint:#EEF1F6;
+  --display:"Instrument Serif",Georgia,serif; --body:"Libre Franklin","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root{color-scheme:dark;
+  --bg:#0C1220; --paper:#121A2C; --ink:#E7ECF5; --muted:#9AA6BD; --line:#26324A; --rule:#E7ECF5;
+  --ok:#4CC995; --ok-soft:#10301F; --brk:#F28B82; --brk-soft:#3A1715; --tint:#18223A;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-inline:20px;padding-block:calc(28px + env(safe-area-inset-top,0px)) calc(80px + env(safe-area-inset-bottom,0px))}
+h1,h2,h3{margin:0;line-height:1.08;text-wrap:balance}
+h1,h2{font-family:var(--display);font-weight:400}
+p{margin:0 0 12px;max-width:66ch}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ok);outline-offset:3px}
+.mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.statement{background:var(--paper);border:1px solid var(--line);box-shadow:0 1px 0 var(--line),0 18px 40px rgba(19,35,63,.08)}
+.st-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;padding:26px 28px;border-bottom:3px double var(--rule)}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.st-head h1{font-size:clamp(36px,5.6vw,62px);margin-top:8px}
+.st-head .lede{font-size:18px;color:var(--muted);margin-top:10px;max-width:56ch}
+.meta{font-family:var(--mono);font-size:12.5px;line-height:1.9;text-align:right;color:var(--muted);white-space:nowrap}
+.meta b{color:var(--ink);font-weight:500}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.sum{padding:16px 20px;border-right:1px solid var(--line)}
+.sum:last-child{border-right:0}
+.sum span{display:block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sum b{display:block;font-family:var(--mono);font-size:26px;font-weight:600;margin-top:4px}
+.sum b.ok{color:var(--ok)} .sum b.brk{color:var(--brk)}
+.st-foot{padding:12px 28px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+
+/* the calendar strip: 63 trading days */
+.cal{padding:20px 28px;border-bottom:1px solid var(--line)}
+.cal h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.days{display:grid;grid-template-columns:repeat(21,minmax(0,1fr));gap:4px}
+.dd{aspect-ratio:1;max-width:100%;border-radius:3px;position:relative;background:var(--ok-soft);border:1px solid var(--ok)}
+.dd.b::after{content:"";position:absolute;inset:28%;border-radius:50%;background:var(--brk)}
+.dd.miss{background:var(--brk-soft);border-color:var(--brk)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:6px;border:1px solid var(--ok);background:var(--ok-soft);position:relative}
+.legend i.b::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--brk)}
+.legend i.m{background:var(--brk-soft);border-color:var(--brk)}
+
+section{margin-top:64px}
+.sh{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--rule);padding-bottom:8px;margin-bottom:18px}
+.sh .ref{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.sh h2{font-size:clamp(28px,3.8vw,40px)}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fact{background:var(--paper);border:1px solid var(--line);padding:16px}
+.fact span{display:block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.fact p{margin:6px 0 0;font-size:15px}
+.tension{margin-top:14px;background:var(--tint);padding:16px 18px;border-left:3px solid var(--ink)}
+.tension p{margin:0;max-width:none}
+
+.lines{background:var(--paper);border:1px solid var(--line)}
+.line{display:grid;grid-template-columns:56px minmax(0,1fr) 220px;gap:18px;padding:20px 22px;border-bottom:1px dotted var(--line);align-items:start}
+.line:last-child{border-bottom:0}
+.line .no{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.line h3{font-size:19px;font-weight:700;margin-bottom:6px}
+.line p{font-size:15.5px;margin:0}
+.line .fig{font-family:var(--mono);text-align:right}
+.line .fig b{display:block;font-size:26px;font-weight:600}
+.line .fig b.brk{color:var(--brk)} .line .fig b.ok{color:var(--ok)}
+.line .fig span{font-size:12px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin-top:10px}
+td,th{padding:7px 0;border-bottom:1px dotted var(--line);text-align:left}
+td.n{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.wrong{margin-top:18px;background:var(--brk-soft);border:1px solid var(--brk);padding:16px 18px}
+.wrong b{color:var(--brk)}
+.wrong p{margin:4px 0 0;max-width:none}
+
+.plan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ph{background:var(--paper);border:1px solid var(--line);padding:18px}
+.ph .w{font-family:var(--mono);font-size:12px;color:var(--ok);font-weight:600}
+.ph h3{font-family:var(--display);font-weight:400;font-size:26px;margin:4px 0 8px}
+.ph ul{margin:0;padding-left:18px;font-size:15px}
+.ph li{margin:5px 0}
+.run{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;background:var(--ink);color:var(--bg);padding:24px}
+.run h3{font-family:var(--display);font-weight:400;font-size:30px}
+.run pre{margin:10px 0 0;border:1px solid color-mix(in srgb,var(--bg) 30%,transparent);padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:13px}
+.run a{border:1px solid var(--bg);padding:10px 16px;text-decoration:none;font-family:var(--mono);font-size:14px;white-space:nowrap}
+.src{font-size:13.5px;color:var(--muted)}
+.src li{margin:3px 0}
+footer{margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+@media (max-width:820px){.st-head{grid-template-columns:1fr}.meta{text-align:left}.summary{grid-template-columns:1fr 1fr}.sum:nth-child(2){border-right:0}.sum{border-bottom:1px solid var(--line)}.facts,.plan{grid-template-columns:1fr}.line{grid-template-columns:1fr;gap:6px}.line .fig{text-align:left}.run{grid-template-columns:1fr}.days{grid-template-columns:repeat(9,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="statement">
+    <div class="st-head">
+      <div>
+        <div class="brand">Role: Data Analyst · Titan, New York · Candidate: S. A. Basharat Ali</div>
+        <h1>Reconciled, account by account</h1>
+        <p class="lede">How a wealth firm's books can tie out in total while individual accounts are wrong, what an advisory fee is really charged on, and how to count what one advisor can serve. Built on a synthetic RIA shaped like Titan's model.</p>
+      </div>
+      <div class="meta">Statement period <b>Q3 2026</b><br>Trading days <b>63</b><br>Households <b>2,000</b><br>Accounts <b>3,562</b><br>Trades <b>2,480</b></div>
+    </div>
+    <div class="summary">
+      <div class="sum"><span>Days total AUM tied out</span><b class="ok">62 / 63</b></div>
+      <div class="sum"><span>Of those, accounts broken underneath</span><b class="brk">61 days</b></div>
+      <div class="sum"><span>Alerts that were just T+1</span><b>34%</b></div>
+      <div class="sum"><span>Fee swing from the base definition</span><b>$26.4K / qtr</b></div>
+    </div>
+    <div class="cal" aria-label="Reconciliation status for each of 63 trading days">
+      <h3>Every trading day of the quarter</h3>
+      <div class="days" id="days"></div>
+      <div class="legend"><span><i></i>total AUM ties out</span><span><i class="b"></i>…with account-level breaks underneath</span><span><i class="m"></i>total misses (split day)</span></div>
+    </div>
+    <div class="st-foot">Synthetic data, fixed seed. Not Titan's data. Numbers from python3 run.py.</div>
+  </div>
+
+  <section aria-labelledby="r">
+    <div class="sh"><span class="ref">Research</span><h2 id="r">How Titan works, from its own disclosures</h2></div>
+    <div class="facts">
+      <div class="fact"><span>Structure</span><p>A registered investment advisor pairing every client with a dedicated human wealth advisor, using AI so one advisor can serve clients a traditional team never reached. Over $1B under management.</p></div>
+      <div class="fact"><span>Custody</span><p>Client assets are held at Apex Clearing, which also handles execution, clearing and settlement. Titan's own records have to agree with Apex every day.</p></div>
+      <div class="fact"><span>Fees and products</span><p>An advisory fee on eligible AUM. Managed strategies, direct indexing, automated portfolios, and a private-markets sleeve with venture and interval funds.</p></div>
+    </div>
+    <div class="tension"><p><strong>Why the role exists:</strong> the posting asks for pipelines into Redshift, dashboards in Omni and Mixpanel, and support for financial reporting. At an RIA, the numbers that matter most are the ones that must match the custodian to the share, bill clients correctly, and prove the advisor-leverage thesis.</p></div>
+  </section>
+
+  <section aria-labelledby="f">
+    <div class="sh"><span class="ref">Findings</span><h2 id="f">Four lines on the statement</h2></div>
+    <div class="lines">
+      <div class="line"><div class="no">01</div><div><h3>Total AUM ties out while accounts don't</h3><p>45 trades landed in the wrong account inside the same household. The household total doesn't change, so the firm-level check passes. A position-level check, shares and cash per account, found all 90 affected accounts on the day each trade settled.</p></div><div class="fig"><b class="brk">61 of 62</b><span>tied-out days with breaks underneath</span></div></div>
+      <div class="line"><div class="no">02</div><div><h3>A third of the alerts are just T+1</h3><p>A trade-date ledger against a settle-date custodian flags 7,062 account-days over the quarter; aligning to settlement leaves 4,629. On the split day, 1,842 accounts break until the ledger applies the 2-for-1, the one day total AUM misses too.</p></div><div class="fig"><b>7,062 → 4,629</b><span>account-day alerts</span></div></div>
+      <div class="line"><div class="no">03</div><div><h3>The fee base is a definition</h3><table><thead><tr><th>Fee base</th><th style="text-align:right">Quarterly fee</th></tr></thead><tbody><tr><td>Eligible AUM, quarter-end value</td><td class="n">$448,095</td></tr><tr><td>Eligible AUM, average daily balance</td><td class="n">$436,218</td></tr><tr><td>Total AUM, excluded sleeve included</td><td class="n">$462,620</td></tr></tbody></table><p style="margin-top:8px">641 accounts hold the monthly-priced interval fund, so their AUM only moves on NAV dates.</p></div><div class="fig"><b>$14,525</b><span>overbilled if the excluded sleeve slips in</span></div></div>
+      <div class="line"><div class="no">04</div><div><h3>Count the advisor's book in one unit</h3><p>The median advisor has 68 households, 121 accounts and $15.1M AUM. The same book reads 1.8x bigger in accounts than in households, so "one advisor does a team's work" needs its unit chosen before anyone tracks it.</p></div><div class="fig"><b class="ok">68 households</b><span>= 121 accounts</span></div></div>
+    </div>
+    <div class="wrong"><b>The part I got wrong.</b><p>My first reconciliation compared account values, and settlement timing vanished: a trade swaps cash for stock at the same price, so the value barely moves. Reconciliation has to compare positions, shares and cash, or T+1 timing and real misbookings both hide.</p></div>
+  </section>
+
+  <section aria-labelledby="p">
+    <div class="sh"><span class="ref">Plan</span><h2 id="p">First 90 days in the role</h2></div>
+    <div class="plan">
+      <div class="ph"><div class="w">DAYS 1–30</div><h3>Tie out to the share</h3><ul><li>Daily position-level reconciliation against the custodian file, aligned to settlement date.</li><li>Corporate actions and interval-fund pricing handled as known events, not alerts.</li></ul></div>
+      <div class="ph"><div class="w">DAYS 31–60</div><h3>Make billing provable</h3><ul><li>One written fee-base definition with Finance, and a check that excluded sleeves never enter it.</li><li>Fee runs reconciled to source positions before invoices go out.</li></ul></div>
+      <div class="ph"><div class="w">DAYS 61–90</div><h3>Measure the thesis</h3><ul><li>Advisor capacity in households, with AUM and activity alongside, in Omni.</li><li>Product and growth dashboards in Mixpanel tied to the same definitions.</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="run"><div><h3>Run it yourself</h3><p style="margin:4px 0 0;opacity:.8">Python standard library only, about two seconds.</p>
+<pre>git clone https://github.com/sa-basharat-ali/custodian-reconciliation
+cd custodian-reconciliation && python3 run.py</pre></div><a href="https://github.com/sa-basharat-ali/custodian-reconciliation">View the code →</a></div>
+  </section>
+
+  <section aria-labelledby="s">
+    <div class="sh"><span class="ref">Sources</span><h2 id="s">Where the research comes from</h2></div>
+    <ul class="src">
+      <li>Titan's Form CRS (client relationship summary), June 2026: custody at Apex, advisory fee on eligible AUM</li>
+      <li>titan.com: dedicated wealth advisors, AI, $1B+ under management, investors</li>
+      <li>Titan Data Analyst posting (jobs.ashbyhq.com/titan)</li>
+      <li>Public reviews of Titan's products: managed strategies, direct indexing, private-markets sleeve</li>
+    </ul>
+    <footer>Independent work by Syed Ahmed Basharat Ali for the Data Analyst application · sabasharat.ali@gmail.com · basharat.net · Not affiliated with Titan. All modeled data is synthetic.</footer>
+  </section>
+</div>
+<script>
+(function(){
+  var host=document.getElementById("days");
+  for(var i=0;i<63;i++){
+    var d=document.createElement("div");
+    // day 31 is the split day (total misses); 61 of the 62 tie-out days had breaks underneath (day 1 clean)
+    d.className="dd"+(i===30?" miss":(i===0?"":" b"));
+    d.title="Trading day "+(i+1);
+    host.appendChild(d);
+  }
+})();
+</script>
+</body>
+</html>
